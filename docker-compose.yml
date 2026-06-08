@@ -1,0 +1,63 @@
+# ============================================================
+# Docker Compose para DESARROLLO LOCAL.
+# Levanta las tres dependencias del back con un solo comando:
+#   - SQL Server (ubicaciones)
+#   - MongoDB    (componentes)
+#   - LDAP       (autenticación)
+#
+# Esto es SOLO para que puedas probar tu back localmente antes de
+# pasar a Kubernetes. Las contraseñas acá son de desarrollo.
+#
+# Uso:
+#   docker compose up -d      -> levanta todo en segundo plano
+#   docker compose ps         -> ver estado
+#   docker compose down       -> apaga todo (conserva los datos)
+#   docker compose down -v    -> apaga y BORRA los datos
+# ============================================================
+
+services:
+
+  # ----- SQL Server: base de UBICACIONES -----
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: inventario_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TuPassw0rdFuerte!"   # debe coincidir con SQLSERVER_PASSWORD del .env
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  # ----- MongoDB: base de COMPONENTES -----
+  mongo:
+    image: mongo:7
+    container_name: inventario_mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"          # = MONGO_USER del .env
+      MONGO_INITDB_ROOT_PASSWORD: "MongoPass2026"  # = MONGO_PASSWORD del .env
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # ----- LDAP: servidor de AUTENTICACIÓN -----
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: inventario_ldap
+    environment:
+      LDAP_ORGANISATION: "ITU"
+      LDAP_DOMAIN: "itu.edu.ar"          # genera la base dc=itu,dc=edu,dc=ar
+      LDAP_ADMIN_PASSWORD: "admin"
+    ports:
+      - "389:389"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+
+# Volúmenes: guardan los datos para que NO se pierdan al apagar los contenedores.
+volumes:
+  sqlserver_data:
+  mongo_data:
+  ldap_data:
+  ldap_config:
