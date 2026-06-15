@@ -1,0 +1,28 @@
+# ============================================================
+# 04 - Allow Backend Ingress (solo desde el Frontend)
+#
+# El backend NO se expone directamente (no tiene Service NodePort).
+# Solo el pod "frontend" puede llamarlo, en el puerto 8000, vía el
+# proxy /api/ de nginx. Esto evita que cualquier otro pod del
+# namespace (o del clúster) acceda directo a la API saltándose el
+# frontend.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-from-frontend
+  namespace: inventario
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8000

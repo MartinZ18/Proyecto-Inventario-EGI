@@ -1,0 +1,7 @@
+# Archivos que no deben terminar dentro de la imagen del frontend.
+Dockerfile
+nginx.conf
+.dockerignore
+.git
+.vscode
+README.md

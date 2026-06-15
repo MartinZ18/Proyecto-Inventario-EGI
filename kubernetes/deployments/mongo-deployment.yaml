@@ -1,0 +1,92 @@
+# ============================================================
+# Deployment de MongoDB 7 (base "inventario_componentes",
+# colección "computadoras") + PersistentVolumeClaim para no perder
+# los datos si el Pod se reinicia.
+#
+# Usuario/clave de administración salen del mismo Secret que usa el
+# backend (MONGO_USER / MONGO_PASSWORD en backend-secret), para que
+# ambos lados queden sincronizados.
+#
+# NOTA (mismatch de seed, ver docs/runbook-despliegue.md):
+# el script `database/scripts/inventario-db_mongo.js` del repo de bases
+# de datos crea la base "inventario_db" / coleccion "componentes", que
+# NO coincide con lo que espera el backend
+# (app/repositories/computadora_repo.py: COLLECTION = "computadoras").
+#
+# El propio repo de backend ya trae un seed correcto, alineado con el
+# codigo: `Proyecto-Inventario-EGI-backend/scripts-dev/componentes_prueba.js`
+# (usa `db.getSiblingDB("inventario_componentes")` y `db.computadoras`).
+# Ese es el que hay que correr contra mongo-service tras el primer
+# despliegue, por ejemplo copiandolo al pod y ejecutandolo con mongosh:
+#   kubectl cp Proyecto-Inventario-EGI-backend/scripts-dev/componentes_prueba.js \
+#     inventario/<pod-mongo>:/tmp/seed.js
+#   kubectl exec -n inventario deploy/mongo -- mongosh \
+#     -u <MONGO_USER> -p <MONGO_PASSWORD> --authenticationDatabase admin \
+#     /tmp/seed.js
+# ============================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data
+  namespace: inventario
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: inventario
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: MONGO_USER
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: MONGO_PASSWORD
+            - name: MONGO_INITDB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: MONGO_DB
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: mongo-data
+          persistentVolumeClaim:
+            claimName: mongo-data

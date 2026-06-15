@@ -1,0 +1,67 @@
+# ============================================================
+# ConfigMap con la configuración NO sensible del backend (FastAPI).
+#
+# Las claves coinciden con los nombres de variables de entorno que
+# lee `app/core/config.py` (Settings, case_sensitive=False), tal
+# como están documentadas en `Proyecto-Inventario-EGI-backend/.env.example`.
+#
+# IMPORTANTE - mismatches resueltos acá (ver docs/runbook-despliegue.md
+# y el CLAUDE.md raíz del proyecto):
+#   - SQLSERVER_DB   = inventario_ubicaciones  (el script SQL trae "ubicacion_db";
+#                       hay que renombrar/crear la BD con este nombre, ver
+#                       sql-server-iis/README.md)
+#   - MONGO_DB       = inventario_componentes  (el seed de Mongo usa "inventario_db";
+#                       hay que ajustar el seed o crear esta BD)
+#   - MONGO_PORT     = 27017 (puerto interno real del Service de Mongo en K8s;
+#                       el 27018 del docker-compose es solo el mapeo de host local)
+#
+# Las credenciales (usuarios, passwords, JWT secret) van en
+# kubernetes/secrets/backend-secret.example.yaml, NO acá.
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: inventario
+data:
+  # ----- App -----
+  APP_NAME: "Inventario ITU"
+  APP_ENV: "k8s"
+  DEBUG: "false"
+
+  # ----- Seguridad / JWT (solo lo no sensible) -----
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "60"
+
+  # ----- SQL Server (ubicaciones) -----
+  # "sqlserver-service" es el Service sin selector + Endpoints definidos en
+  # kubernetes/external/sqlserver-endpoints.yaml, que apunta a la VM real
+  # [SQLSERVER_IP]:1433 (ver docs/topologia-red.md).
+  SQLSERVER_HOST: "sqlserver-service"
+  SQLSERVER_PORT: "1433"
+  SQLSERVER_DB: "inventario_ubicaciones"
+  SQLSERVER_DRIVER: "ODBC Driver 18 for SQL Server"
+
+  # ----- MongoDB (componentes) -----
+  # "mongo-service" es el Service ClusterIP del Deployment de Mongo
+  # definido en kubernetes/deployments/mongo-deployment.yaml.
+  MONGO_HOST: "mongo-service"
+  MONGO_PORT: "27017"
+  MONGO_DB: "inventario_componentes"
+
+  # ----- LDAP / Active Directory -----
+  # "ldap-service" es el Service sin selector + Endpoints definidos en
+  # kubernetes/external/ldap-endpoints.yaml, que apunta al DC real
+  # [DC_IP]:389 (dominio itu.local, ver active-directory/README.md).
+  LDAP_HOST: "ldap-service"
+  LDAP_PORT: "389"
+  # Base DN = la OU donde vive toda la estructura del proyecto
+  # (itu.local -> OU=ITU -> User/Computer/Server/Printer/Grupos), ver
+  # active-directory/README.md. obtener_rol() busca los grupos
+  # Tecnicos/Docentes/Alumnos como "cn={grupo},ou=grupos,{LDAP_BASE_DN}".
+  LDAP_BASE_DN: "OU=ITU,DC=itu,DC=local"
+  # Formato de bind para Active Directory (UPN). Reemplaza el formato
+  # OpenLDAP "uid={username},ou=usuarios,dc=itu,dc=edu,dc=ar" usado en
+  # desarrollo local.
+  LDAP_USER_DN_TEMPLATE: "{username}@itu.local"
+  LDAP_USE_SSL: "false"

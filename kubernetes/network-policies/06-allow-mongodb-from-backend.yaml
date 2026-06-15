@@ -1,0 +1,26 @@
+# ============================================================
+# 06 - Allow MongoDB Ingress (solo desde el Backend)
+#
+# El pod "mongo" solo acepta conexiones del pod "backend" en el
+# puerto 27017. Ningún otro pod (ni siquiera el frontend) puede
+# conectarse directo a la base de datos.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mongodb-from-backend
+  namespace: inventario
+spec:
+  podSelector:
+    matchLabels:
+      app: mongo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - protocol: TCP
+          port: 27017

@@ -1,0 +1,29 @@
+# ============================================================
+# 02 - Allow Frontend Ingress
+#
+# El frontend es el único componente expuesto al exterior, vía el
+# Service NodePort (frontend-service:30080) y, desde afuera del
+# clúster, vía el port-forward de pfSense (ver pfsense/README.md).
+#
+# Como el tráfico llega desde fuera del namespace (e incluso desde
+# fuera del clúster), no se puede acotar por podSelector/ipBlock
+# interno: se permite ingreso al pod "frontend" en el puerto 80
+# desde cualquier origen. El "menor privilegio" acá está en el
+# PUERTO (solo 80) y en que ningún otro pod del namespace tiene
+# ingress abierto desde el exterior.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-ingress
+  namespace: inventario
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80

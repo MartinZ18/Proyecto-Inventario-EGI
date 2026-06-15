@@ -1,0 +1,53 @@
+# ============================================================
+# Deployment de "cloudflared" - Cloudflare Tunnel (Quick Tunnel).
+#
+# Da acceso al frontend desde fuera de la red local (internet, wifi
+# del celular, etc.) sin necesidad de IP publica ni abrir puertos en
+# el router/pfSense: cloudflared abre una conexion saliente hacia el
+# borde de Cloudflare y expone "http://frontend-service:80" en una URL
+# publica https://*.trycloudflare.com.
+#
+# Es un AGREGADO al NodePort :30080
+# (kubernetes/services/frontend-service.yaml), no lo reemplaza: el
+# acceso LAN via pfSense/NodePort sigue funcionando igual.
+#
+# Modo "Quick Tunnel": no requiere cuenta ni token de Cloudflare. La
+# URL es efimera (cambia cada vez que se reinicia el pod). Para una URL
+# fija con dominio propio, ver la nota de "tunnel nombrado" en
+# docs/topologia-red.md (mejora futura opcional).
+#
+# Para obtener la URL publica generada:
+#   kubectl logs -n inventario deploy/cloudflared | grep trycloudflare
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: inventario
+  labels:
+    app: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --url
+            - http://frontend-service:80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

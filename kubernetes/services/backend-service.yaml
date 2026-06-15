@@ -1,0 +1,18 @@
+# ============================================================
+# Service ClusterIP del backend. Solo accesible dentro del clúster
+# (frontend y, si hiciera falta, otros pods autorizados por las
+# NetworkPolicies). No se expone directamente al exterior.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: inventario
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP

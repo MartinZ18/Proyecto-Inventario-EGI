@@ -1,0 +1,36 @@
+# ============================================================
+# Service "sin selector" + Endpoints manuales que apuntan a la VM
+# real de SQL Server (fuera del clúster).
+#
+# Esto permite que el backend hable a "sqlserver-service:1433" como si
+# fuera un Service normal de Kubernetes (resolución DNS interna), y que
+# kubernetes/network-policies/05-allow-backend-egress.yaml controle ese
+# tráfico por ipBlock hacia ${IP_RED_PROF} (ver docs/topologia-red.md).
+#
+# ${SQLSERVER_IP} se sustituye automáticamente al generar los
+# manifiestos (ver infra/scripts/generar-manifiestos.* y
+# sql-server-iis/README.md). No editar este archivo directamente:
+# editar infra/red.local.env.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlserver-service
+  namespace: inventario
+spec:
+  ports:
+    - port: 1433
+      targetPort: 1433
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: sqlserver-service
+  namespace: inventario
+subsets:
+  - addresses:
+      - ip: "${SQLSERVER_IP}"
+    ports:
+      - port: 1433
+        protocol: TCP

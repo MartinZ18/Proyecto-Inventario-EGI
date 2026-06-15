@@ -1,0 +1,12 @@
+# ============================================================
+# Namespace dedicado para todos los recursos del Inventario ITU.
+# Aislar el proyecto en su propio namespace permite que las
+# NetworkPolicies de kubernetes/network-policies/ apliquen un
+# modelo "default-deny" sin afectar a otras cargas del clúster.
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inventario
+  labels:
+    proyecto: inventario-itu

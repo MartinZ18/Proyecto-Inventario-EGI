@@ -1,0 +1,60 @@
+# ============================================================
+# Deployment del backend FastAPI (API de inventario).
+#
+# - Imagen "inventario-api:latest" se construye en el pipeline
+#   (.github/workflows/deploy.yml) a partir del Dockerfile del repo
+#   Proyecto-Inventario-EGI-backend, y se carga directo al daemon
+#   de Docker de Minikube (eval $(minikube docker-env)), por eso
+#   imagePullPolicy=Never.
+# - La configuración no sensible viene del ConfigMap "backend-config"
+#   y las credenciales del Secret "backend-secret" (ambos en
+#   kubernetes/configmaps/ y kubernetes/secrets/).
+# - Probes en /health (definido en app/main.py).
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: inventario
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: inventario-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

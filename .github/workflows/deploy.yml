@@ -1,0 +1,191 @@
+# ============================================================
+# Pipeline de despliegue del Inventario ITU a Minikube.
+#
+# Disparo MANUAL (workflow_dispatch), siguiendo el patrón visto en
+# clase ("Desplegando MongoDB y NGINX en Minikube"): un runner
+# self-hosted instalado en la MISMA máquina donde corre Minikube,
+# que construye las imágenes directo en el daemon de Docker de
+# Minikube (sin pasar por un registry externo) y aplica los
+# manifiestos de kubernetes/.
+#
+# Requisitos en la máquina del runner (una sola vez, ver
+# docs/runbook-despliegue.md):
+#   - minikube + kubectl instalados, `minikube start` ya ejecutado
+#     (con --cni=calico para que las NetworkPolicies funcionen).
+#   - Runner de GitHub Actions registrado como self-hosted con la
+#     etiqueta "minikube" (Settings -> Actions -> Runners).
+#   - `envsubst` disponible (paquete gettext-base; viene preinstalado en
+#     los runners Ubuntu).
+#   - `infra/red.local.env` creado a partir de `infra/red.example.env`
+#     en la raíz de ESTE repo en la máquina del runner (gitignored, ver
+#     infra/red.example.env) con las IPs reales de pfSense/AD/SQL Server
+#     del laboratorio. `MINIKUBE_IP` se recalcula solo en cada corrida
+#     (paso "Resolver configuración de red").
+#
+# Secrets de GitHub necesarios (Settings -> Secrets and variables ->
+# Actions), usados para crear/actualizar el Secret "backend-secret"
+# sin commitear contraseñas (ver kubernetes/secrets/backend-secret.example.yaml):
+#   - REPO_ACCESS_TOKEN : Personal Access Token con permiso "repo" sobre
+#                         Agus-tina/Proyecto-Inventario-EGI (privado), para
+#                         poder hacer checkout de las ramas backend/frontend
+#                         desde este repo de infraestructura.
+#   - JWT_SECRET            -> backend-secret.JWT_SECRET_KEY
+#   - SQLSERVER_USER        -> backend-secret.SQLSERVER_USER
+#   - SQLSERVER_PASSWORD    -> backend-secret.SQLSERVER_PASSWORD
+#   - MONGO_ROOT_USER       -> backend-secret.MONGO_USER
+#   - MONGO_ROOT_PASSWORD   -> backend-secret.MONGO_PASSWORD
+#
+# (LDAP_BIND_PASSWORD se documenta en active-directory/README.md para
+# cuando el backend incorpore un bind de servicio "svc-inventario";
+# todavía no es consumido por backend-secret).
+# ============================================================
+
+name: Deploy Inventario ITU a Minikube
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, minikube]
+
+    steps:
+      # 1) Checkout de este repo: trae kubernetes/, docker/frontend/, etc.
+      - name: Checkout infraestructura
+        uses: actions/checkout@v4
+        with:
+          path: infraestructura
+
+      # 2) Checkout del código del backend (rama "backend" del repo principal).
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          repository: Agus-tina/Proyecto-Inventario-EGI
+          ref: backend
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          path: backend
+
+      # 3) Checkout del código del frontend (rama "frontend" del repo principal).
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: Agus-tina/Proyecto-Inventario-EGI
+          ref: frontend
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          path: frontend
+
+      # 4) Resolver la configuración de red del laboratorio: carga
+      #    infra/red.local.env (o infra/red.example.env con un aviso si
+      #    no existe; MINIKUBE_IP es la IP estática del host Minikube) y
+      #    SQLSERVER_IP por DNS contra el DC si no está fijado. Exporta
+      #    todo a $GITHUB_ENV para los pasos siguientes.
+      - name: Resolver configuración de red
+        run: bash infraestructura/infra/scripts/detectar-red.sh
+
+      # 5) Generar, a partir de los valores resueltos en el paso
+      #    anterior, la versión final (sin placeholders ${VAR}) de los
+      #    manifiestos de kubernetes/external/ y
+      #    kubernetes/network-policies/ en kubernetes/_generated/
+      #    (gitignored).
+      - name: Generar manifiestos con la red resuelta
+        run: bash infraestructura/infra/scripts/generar-manifiestos.sh
+
+      # 6) Apuntar el cliente Docker al daemon DENTRO de Minikube, para que
+      #    las imágenes que buildeamos queden disponibles para los Pods sin
+      #    necesidad de un registry (de ahí imagePullPolicy: Never en los
+      #    Deployments).
+      - name: Configurar entorno Docker de Minikube
+        run: |
+          eval $(minikube -p minikube docker-env)
+          echo "DOCKER_TLS_VERIFY=$DOCKER_TLS_VERIFY" >> "$GITHUB_ENV"
+          echo "DOCKER_HOST=$DOCKER_HOST" >> "$GITHUB_ENV"
+          echo "DOCKER_CERT_PATH=$DOCKER_CERT_PATH" >> "$GITHUB_ENV"
+          echo "MINIKUBE_ACTIVE_DOCKERD=$MINIKUBE_ACTIVE_DOCKERD" >> "$GITHUB_ENV"
+
+      # 7) Build de la imagen del backend (FastAPI + ODBC Driver 18).
+      - name: Build imagen backend (inventario-api)
+        run: docker build -t inventario-api:latest ./backend
+
+      # 8) Build de la imagen del frontend, usando el Dockerfile/nginx.conf
+      #    de este repo de infraestructura sobre el checkout del frontend.
+      - name: Build imagen frontend (inventario-web)
+        run: |
+          cp infraestructura/docker/frontend/nginx.conf frontend/
+          cp infraestructura/docker/frontend/.dockerignore frontend/
+          docker build -f infraestructura/docker/frontend/Dockerfile -t inventario-web:latest frontend/
+
+      # 9) Namespace, configuración no sensible y endpoints externos
+      #    (SQL Server / AD fuera del clúster). Los endpoints externos se
+      #    aplican desde kubernetes/_generated/external/ (paso 5), ya con
+      #    ${SQLSERVER_IP}/${DC_IP} sustituidos por los valores reales.
+      - name: Aplicar namespace, configmaps y endpoints externos
+        run: |
+          kubectl apply -f infraestructura/kubernetes/00-namespace.yaml
+          kubectl apply -f infraestructura/kubernetes/configmaps/
+          kubectl apply -f infraestructura/kubernetes/_generated/external/
+
+      # 10) Crear/actualizar el Secret del backend a partir de los GitHub
+      #     Secrets (nunca se commitea un Secret real al repo).
+      - name: Crear/actualizar Secret del backend
+        run: |
+          kubectl create secret generic backend-secret \
+            --namespace inventario \
+            --from-literal=JWT_SECRET_KEY="${{ secrets.JWT_SECRET }}" \
+            --from-literal=SQLSERVER_USER="${{ secrets.SQLSERVER_USER }}" \
+            --from-literal=SQLSERVER_PASSWORD="${{ secrets.SQLSERVER_PASSWORD }}" \
+            --from-literal=MONGO_USER="${{ secrets.MONGO_ROOT_USER }}" \
+            --from-literal=MONGO_PASSWORD="${{ secrets.MONGO_ROOT_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # 11) Deployments y Services de backend, frontend, mongo y
+      #     cloudflared (acceso externo vía Cloudflare Tunnel).
+      - name: Aplicar deployments y services
+        run: |
+          kubectl apply -f infraestructura/kubernetes/deployments/
+          kubectl apply -f infraestructura/kubernetes/services/
+
+      # 12) NetworkPolicies zero-trust (deben aplicarse después de que
+      #     existan los pods/labels que referencian). Se aplican desde
+      #     kubernetes/_generated/network-policies/ (paso 5): la mayoría
+      #     de los archivos no tienen placeholders y quedan igual, solo
+      #     05-allow-backend-egress.yaml cambia (${IP_RED_PROF}).
+      - name: Aplicar NetworkPolicies
+        run: kubectl apply -f infraestructura/kubernetes/_generated/network-policies/
+
+      # 13) Esperar a que los rollouts terminen para detectar fallos de
+      #     arranque (CrashLoopBackOff por configuración inválida, etc.)
+      #     directo en el log del workflow.
+      - name: Esperar rollout de los Deployments
+        run: |
+          kubectl rollout status deployment/backend -n inventario --timeout=180s
+          kubectl rollout status deployment/frontend -n inventario --timeout=180s
+          kubectl rollout status deployment/mongo -n inventario --timeout=180s
+          kubectl rollout status deployment/cloudflared -n inventario --timeout=180s
+
+      # 14) Resumen final: URL de acceso LAN (NodePort), URL pública de
+      #     Cloudflare Tunnel y estado de los pods, útil para la demo.
+      #     La URL de Cloudflare tarda unos segundos en aparecer en los
+      #     logs de cloudflared tras el rollout, por eso se reintenta.
+      - name: Estado del despliegue
+        run: |
+          echo "Frontend (LAN) disponible en: http://${MINIKUBE_IP}:30080"
+
+          echo "Buscando URL pública de Cloudflare Tunnel..."
+          CLOUDFLARE_URL=""
+          for i in $(seq 1 10); do
+            CLOUDFLARE_URL=$(kubectl logs -n inventario deploy/cloudflared --tail=100 2>/dev/null \
+              | grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' | tail -n1 || true)
+            if [ -n "$CLOUDFLARE_URL" ]; then
+              break
+            fi
+            sleep 3
+          done
+
+          if [ -n "$CLOUDFLARE_URL" ]; then
+            echo "Frontend (internet) disponible en: $CLOUDFLARE_URL"
+          else
+            echo "No se pudo obtener todavía la URL de Cloudflare Tunnel."
+            echo "Revisar manualmente: kubectl logs -n inventario deploy/cloudflared"
+          fi
+
+          kubectl get pods -n inventario -o wide

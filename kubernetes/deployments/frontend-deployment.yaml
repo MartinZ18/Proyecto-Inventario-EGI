@@ -1,0 +1,52 @@
+# ============================================================
+# Deployment del frontend estático (HTML/CSS/JS servido por nginx).
+#
+# - Imagen "inventario-web:latest" se construye en el pipeline
+#   (.github/workflows/deploy.yml) con docker/frontend/Dockerfile,
+#   a partir del checkout del repo Proyecto-Inventario-EGI-frontend,
+#   y se carga al daemon de Docker de Minikube, por eso
+#   imagePullPolicy=Never.
+# - Probe en /healthz (definido en docker/frontend/nginx.conf).
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: inventario
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: inventario-web:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

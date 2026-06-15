@@ -1,0 +1,25 @@
+# ============================================================
+# 00 - Default Deny (zero-trust)
+#
+# Política base: NIEGA todo el tráfico de entrada y salida para
+# TODOS los pods del namespace "inventario" que no tengan otra
+# NetworkPolicy que lo permita explícitamente.
+#
+# A partir de acá, cada política siguiente (01-06) ABRE un agujero
+# puntual y justificado (principio de menor privilegio). Sin esta
+# política base, las demás solo "sumarían" permisos sobre un
+# namespace abierto por defecto.
+#
+# Requiere un CNI que soporte NetworkPolicy (Calico en Minikube:
+# `minikube start --network-plugin=cni --cni=calico`).
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: inventario
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

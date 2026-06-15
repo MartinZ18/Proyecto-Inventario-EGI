@@ -1,0 +1,26 @@
+# Configuración de red local (propia de cada máquina, ver infra/red.example.env)
+infra/red.local.env
+
+# Manifiestos generados con las IPs/red resueltas (ver infra/scripts/generar-manifiestos.*)
+kubernetes/_generated/
+
+# Scripts de pfSense con valores/secretos ya sustituidos (ver pfsense/scripts/aplicar-config-pfsense.ps1)
+infra/_generated-pfsense/
+
+# Claves y certificados (SSH a pfSense, etc.)
+*.pem
+*.key
+
+# Imágenes y metadata de VirtualBox (VMs del laboratorio, no se commitean)
+*.vdi
+*.vmdk
+*.vbox
+*.vbox-prev
+*.ova
+*.ovf
+*.img
+Logs/
+Snapshots/
+
+# Estado local de Claude Code (no es parte del proyecto)
+.claude/

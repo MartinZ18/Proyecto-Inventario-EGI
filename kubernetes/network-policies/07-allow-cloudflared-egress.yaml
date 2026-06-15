@@ -1,0 +1,40 @@
+# ============================================================
+# 07 - Allow Cloudflared Egress
+#
+# El pod "cloudflared" (kubernetes/deployments/cloudflared-deployment.yaml)
+# necesita salir a internet para conectarse al borde de Cloudflare y
+# mantener el tunel (Quick Tunnel) que expone "frontend-service:80" en
+# una URL publica https://*.trycloudflare.com.
+#
+# A diferencia de 05-allow-backend-egress (acotado a la red del
+# laboratorio), este destino es internet en general (0.0.0.0/0), pero
+# se restringe a los puertos/protocolos que usa cloudflared:
+#   - 443/TCP : fallback HTTP/2 hacia el edge de Cloudflare
+#   - 7844/UDP: QUIC, protocolo preferido para el tunel
+#
+# La resolucion DNS ya esta cubierta por 01-allow-dns.yaml (podSelector
+# {} aplica a todos los pods, incluido este). El ingress hacia
+# "frontend" ya esta cubierto por 02-allow-frontend-ingress.yaml (acepta
+# cualquier origen en :80), asi que cloudflared puede llegar a el sin
+# reglas adicionales.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cloudflared-egress
+  namespace: inventario
+spec:
+  podSelector:
+    matchLabels:
+      app: cloudflared
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: UDP
+          port: 7844

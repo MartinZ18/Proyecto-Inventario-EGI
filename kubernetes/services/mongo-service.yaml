@@ -1,0 +1,17 @@
+# ============================================================
+# Service ClusterIP de MongoDB. Solo accesible desde el backend
+# (ver kubernetes/network-policies/06-allow-mongodb-from-backend.yaml).
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+  namespace: inventario
+spec:
+  type: ClusterIP
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+      protocol: TCP

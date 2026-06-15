@@ -1,0 +1,22 @@
+# ============================================================
+# Service NodePort del frontend. Punto de entrada en la LAN del
+# laboratorio (http://${MINIKUBE_IP}:30080), opcionalmente reenviado
+# por pfSense (ver pfsense/README.md). El acceso externo a internet se
+# resuelve aparte via Cloudflare Tunnel
+# (kubernetes/deployments/cloudflared-deployment.yaml), ver
+# docs/topologia-red.md.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: inventario
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP

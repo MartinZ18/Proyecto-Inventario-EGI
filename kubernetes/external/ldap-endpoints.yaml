@@ -1,0 +1,35 @@
+# ============================================================
+# Service "sin selector" + Endpoints manuales que apuntan al
+# Domain Controller real (Active Directory, fuera del clúster).
+#
+# Permite que el backend hable a "ldap-service:389" como si fuera un
+# Service normal de Kubernetes, y que
+# kubernetes/network-policies/05-allow-backend-egress.yaml controle ese
+# tráfico por ipBlock hacia ${IP_RED_PROF} (ver docs/topologia-red.md).
+#
+# ${DC_IP} se sustituye automáticamente al generar los manifiestos (ver
+# infra/scripts/generar-manifiestos.* y active-directory/README.md). No
+# editar este archivo directamente: editar infra/red.local.env.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldap-service
+  namespace: inventario
+spec:
+  ports:
+    - port: 389
+      targetPort: 389
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ldap-service
+  namespace: inventario
+subsets:
+  - addresses:
+      - ip: "${DC_IP}"
+    ports:
+      - port: 389
+        protocol: TCP

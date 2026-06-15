@@ -1,0 +1,31 @@
+# ============================================================
+# 01 - Allow DNS (egress)
+#
+# El default-deny (00) también bloquea la resolución DNS interna,
+# que TODOS los pods necesitan para resolver nombres de Service
+# (backend-service, mongo-service, sqlserver-service, ldap-service,
+# etc.) y para que el backend resuelva sus dependencias externas.
+#
+# Permite egress de TODOS los pods del namespace hacia kube-dns
+# (namespace kube-system) en UDP/TCP 53. Es la única regla "global"
+# del set; el resto son punto a punto entre componentes específicos.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: inventario
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -1,0 +1,48 @@
+# ============================================================
+# 05 - Allow Backend Egress
+#
+# El backend necesita salir hacia:
+#   1. MongoDB (pod "mongo" dentro del clúster, puerto 27017).
+#   2. SQL Server real (VM fuera del clúster, puerto 1433).
+#   3. Active Directory / LDAP real (DC fuera del clúster, puerto 389).
+#
+# Para 2 y 3 el destino está fuera del clúster, por lo que se usa un
+# ipBlock acotado a la red del laboratorio ${IP_RED_PROF} (ver
+# docs/topologia-red.md) en lugar de "0.0.0.0/0": cualquier otra IP
+# de esa red queda bloqueada salvo los puertos 1433/389 explícitos.
+#
+# ${IP_RED_PROF} se sustituye automáticamente al generar los
+# manifiestos (ver infra/scripts/generar-manifiestos.*). No editar
+# este archivo directamente: editar infra/red.local.env.
+#
+# (La resolución DNS ya está cubierta por 01-allow-dns.yaml)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-egress
+  namespace: inventario
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Egress
+  egress:
+    # 1. MongoDB dentro del clúster.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mongo
+      ports:
+        - protocol: TCP
+          port: 27017
+    # 2 y 3. SQL Server (1433) y AD/LDAP (389) en la red del laboratorio.
+    - to:
+        - ipBlock:
+            cidr: "${IP_RED_PROF}"
+      ports:
+        - protocol: TCP
+          port: 1433
+        - protocol: TCP
+          port: 389
