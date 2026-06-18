@@ -686,16 +686,92 @@ bash infra/scripts/seed-mongo.sh --backend-repo <ruta-checkout-backend>
 
 ---
 
+## Sesión 2026-06-18 (tarde) — Verificación end-to-end y análisis frontend
+
+### Conectividad entre VMs verificada
+
+Pruebas desde LubuntuEGI (192.168.56.30):
+
+| Destino | Protocolo | Resultado |
+|---|---|---|
+| pfSense 192.168.56.2 | ping / SSH 22 / HTTP 80 | ✅ |
+| pfSense 192.168.56.2 | HTTPS 443 | ❌ timeout (webGUI en HTTP, no HTTPS — normal) |
+| AD/DC 192.168.56.10 | ping / LDAP 389 / LDAPS 636 / Kerberos 88 / RDP 3389 | ✅ |
+| SQL Server 192.168.56.20 | ping / SQL 1433 / IIS HTTP 80 / RDP 3389 | ✅ |
+| Minikube :30080 | HTTP | ✅ 200 OK |
+
+DNS: `DC01-ITU.itu.local` y `itu.local` resuelven correctamente contra el DC.
+
+### API backend verificada end-to-end
+
+| Endpoint | Resultado |
+|---|---|
+| `POST /auth/login` (form-data) | ✅ JWT devuelto |
+| `GET /inventario/` | ✅ 12 registros (SQL + Mongo combinados) |
+| `GET /inventario/1` | ✅ detalle completo con ubicación, asignaciones, persona |
+| `GET /inventario/ubicaciones` | ✅ 11 ubicaciones |
+| `GET /inventario/personas` | ❌ endpoint no existe aún en el backend |
+
+### MongoDB recargado con datos oficiales
+
+Se reemplazaron los 12 documentos cargados manualmente con los del
+archivo oficial `database/scripts/inventario-db_mongo.js` de la rama
+`bases-de-datos` del repo principal. Los datos oficiales usan modelos
+distintos (algunos equipos cambian de tipo desktop/laptop).
+
+### Deploy del frontend con campo mesa (2026-06-18 tarde)
+
+El compañero de frontend hizo commit añadiendo el campo mesa al
+formulario. Se disparó el workflow y se aplicó un parche manual sobre
+el pod porque el `src` del script quedó vacío en el HTML. Ver
+`docs/fix-frontend-mesa.md` para el fix a commitear.
+
+### Análisis completo del frontend
+
+Se revisaron todos los archivos HTML y JS del frontend. Issues
+encontrados documentados en `docs/fix-frontend-mejoras.md`:
+- **Bugs**: botón cerrar sesión sin handler en detalle.html, mesa
+  muestra "null", breadcrumb lleva al login
+- **Features faltantes**: campo mesa en detalle, capacidad batería
+  siempre vacía, sin columna estado en listado, falta
+  `obtenerPersonas()` en api.js
+- **UX**: botón Eliminar visible a no-técnicos, lang="en" en todo el
+  HTML, títulos genéricos
+
+### Auditoría de exigencias del proyecto
+
+Se revisó el documento oficial "Proyecto Integrador EGI" y se
+verificó el cumplimiento punto por punto. Ver
+`docs/auditoria-exigencias.md`. Pendientes para la defensa:
+- Flujograma de navegación de la app (UX) — no existe
+- Diagrama E-R o diseño previo de BD — verificar con el equipo
+- Endpoint `/personas/` en backend (fix en `docs/fix-backend-ldap.md`)
+- Presentación PowerPoint — no creada
+
+### Documentos entregables para compañeros
+
+| Archivo | Para quién | Contenido |
+|---|---|---|
+| `docs/fix-backend-ldap.md` | Backend | LDAP fix + seed + endpoint `/personas/` |
+| `docs/fix-frontend-mesa.md` | Frontend | Bug src="" vacío en formulario.html |
+| `docs/fix-frontend-mejoras.md` | Frontend | 10 mejoras y bugs con código exacto |
+| `docs/fix-basededatos-mesa.md` | Bases de datos | Agregar campo mesa al INSERT del seed SQL |
+
+---
+
 ## Cómo seguir
 
-**Fases 0-6 completas** al 2026-06-18.
+**Fases 0-6 completas** al 2026-06-18. **Próximo paso: Fase 7 —
+migración al repo principal** (ver `docs/migracion-repo-principal.md`).
 
-**Pendiente crítico (bloquea los deploys futuros via workflow)**:
-commit de `app/services/ldap_service.py` y `app/core/config.py` al
-repo `Agus-tina/Proyecto-Inventario-EGI` rama `backend` con el fix del
-LDAP (ver Fase 6 arriba). Hasta que se haga ese commit, cada corrida
-del workflow construirá una imagen con el código bugueado de LDAP, y
-los logins retornarán 401.
+**Pendientes críticos antes de la defensa:**
+
+1. El compañero de backend debe commitear los fixes de `docs/fix-backend-ldap.md`
+   a la rama `backend` — sin esto, cada workflow rebuild genera una imagen
+   con LDAP bugueado y los logins retornan 401.
+2. El compañero de frontend debe commitear el fix del `src=""` vacío en
+   `formulario.html` (ver `docs/fix-frontend-mesa.md`).
+3. Migrar el runner al repo principal (ver `docs/migracion-repo-principal.md`).
 
 Cada fase tiene su propio detalle paso a paso y checklist en
 `docs/runbook-despliegue.md`; esta bitácora registra lo que realmente

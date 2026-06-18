@@ -24,6 +24,7 @@ antes de pasar a la siguiente fase.
 | 4 — Minikube + Calico | ✅ Completa |
 | 5 — Kubernetes (apps + NetworkPolicies) | ✅ Completa |
 | 6 — GitHub Actions (CI/CD) | ✅ Completa |
+| 7 — Migración al repo principal | ⏳ Pendiente |
 
 📄 Detalle de lo hecho en cada fase, decisiones tomadas (p. ej. IIS/SSRS
 descartado en Fase 2) y pendientes abiertos para retomar: ver
@@ -304,6 +305,33 @@ accesible vía NodePort/pfSense, y el último paso del workflow ("Estado
 del despliegue") imprime la URL LAN (`http://${MINIKUBE_IP}:30080`) y
 recuerda el acceso externo vía el port-forward NAT de pfSense +
 VirtualBox (`pfsense/README.md` sección 2).
+
+---
+
+## Fase 7 — Migración al repo principal
+
+📄 Ver `docs/migracion-repo-principal.md` para el paso a paso completo.
+
+El runner self-hosted está registrado en el fork personal
+`MartinZ18/Proyecto-Inventario-EGI-infraestructura`. Para que todo el
+equipo pueda disparar el workflow desde el repo compartido
+(`Agus-tina/Proyecto-Inventario-EGI`) hay que:
+
+1. Pushear el código de infra al repo principal (rama `seguridad` para el
+   trabajo de Martin, rama `despliegue` para el material de CI/CD).
+2. Dar de baja el runner del fork (`./config.sh remove`).
+3. Registrar el runner en el repo principal con un token nuevo.
+4. Cargar los 7 GitHub Secrets en el repo principal.
+5. Crear `infra/red.local.env` en el workspace nuevo del runner.
+6. Disparar el workflow desde el repo principal y verificar que termina
+   en verde.
+
+⚠️ El Secret `LDAP_BIND_PASSWORD` es nuevo — no estaba en el fork
+original; es necesario para el fix de LDAP del backend.
+
+✅ Checklist: workflow del repo principal termina en verde, `kubectl get
+pods -n inventario` muestra los 3 Deployments, login desde el frontend
+funciona.
 
 ---
 
