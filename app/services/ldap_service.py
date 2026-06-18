@@ -66,26 +66,28 @@ def obtener_rol(username: str, password: str) -> Optional[str]:
         conn = Connection(server, user=user_dn, password=password, auto_bind=True)
         conn.unbind()
 
-        # Ya validado, nos reconectamos como admin para poder leer los grupos.
         admin_conn = Connection(
             server,
-            user=f"cn=admin,{settings.ldap_base_dn}",
-            password="admin",  # contraseña del admin del LDAP (de desarrollo)
+            user=settings.ldap_bind_dn,
+            password=settings.ldap_bind_password,
             auto_bind=True,
         )
 
-        # Buscar en qué grupo figura este usuario como 'member'.
+        admin_conn.search(
+            search_base=settings.ldap_base_dn,
+            search_filter=f"(userPrincipalName={user_dn})",
+            search_scope=SUBTREE,
+            attributes=["memberOf"],
+        )
+
         rol = None
-        for grupo in ("Tecnicos", "Docentes", "Alumnos"):
-            admin_conn.search(
-                search_base=f"cn={grupo},ou=grupos,{settings.ldap_base_dn}",
-                search_filter=f"(member={user_dn})",
-                search_scope=SUBTREE,
-                attributes=["cn"],
-            )
-            if admin_conn.entries:
-                rol = grupo
-                break
+        if admin_conn.entries:
+            grupos_usuario = admin_conn.entries[0].entry_attributes_as_dict.get("memberOf", [])
+            for grupo in ("Tecnicos", "Docentes", "Alumnos"):
+                prefijo = f"cn={grupo},".lower()
+                if any(dn.lower().startswith(prefijo) for dn in grupos_usuario):
+                    rol = grupo
+                    break
 
         admin_conn.unbind()
         return rol

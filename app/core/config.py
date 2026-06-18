@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     ldap_host: str
     ldap_port: int = 389
     ldap_base_dn: str
+    ldap_bind_dn: str
+    ldap_bind_password: str
     ldap_user_dn_template: str
     ldap_use_ssl: bool = False
 

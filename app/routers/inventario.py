@@ -13,7 +13,7 @@ from pymongo.database import Database
 from app.dependencies import get_sql, get_mongo, get_current_user, requiere_tecnico
 from app.repositories import computadora_repo
 from app.services import inventario_service
-from app.schemas.inventario import EquipoCreate, EquipoUpdate, EquipoOut, UbicacionOut
+from app.schemas.inventario import EquipoCreate, EquipoUpdate, EquipoOut, UbicacionOut, PersonaOut
 from app.schemas.computadora import (
     ComputadoraCreate, ComputadoraUpdate, ComputadoraOut, InventarioCompleto,
 )
@@ -31,6 +31,14 @@ router = APIRouter(
 def listar_ubicaciones(sql: Session = Depends(get_sql)):
     """Lista los laboratorios/ubicaciones disponibles para crear un equipo."""
     return inventario_service.equipo_repo.get_ubicaciones(sql)
+
+
+# ===== PERSONAS (para asignar a un equipo) =====
+
+@router.get("/personas", response_model=List[PersonaOut])
+def listar_personas(sql: Session = Depends(get_sql)):
+    """Lista las personas disponibles para asignar a un equipo."""
+    return inventario_service.equipo_repo.get_personas(sql)
 
 
 # ===== VISTA UNIFICADA (SQL + Mongo combinados) =====
