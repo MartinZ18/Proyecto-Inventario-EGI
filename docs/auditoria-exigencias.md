@@ -94,10 +94,11 @@ esté en el repo principal antes de la defensa.
 
 ### 3. "Responsable asignado" en el formulario (⚠️ visible en demo)
 
-El dropdown de personas está vacío porque no existe `GET /personas/` en
-el backend. El integrante de backend tiene que agregar el endpoint.
-Mientras tanto, los responsables asignados se ven en la vista de detalle
-(datos cargados en SQL directamente).
+Las personas **sí están cargadas en SQL** (12 registros: técnicos,
+docentes, alumnos, administrador) y se muestran correctamente en la
+vista de detalle. El problema es que no existe `GET /personas/` en el
+backend, por lo que el formulario de alta/edición no puede listarlas en
+el dropdown. El integrante de backend tiene que agregar ese endpoint.
 
 ### 4. Presentación PowerPoint (❌ obligatorio)
 
