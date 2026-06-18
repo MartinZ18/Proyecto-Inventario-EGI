@@ -88,8 +88,15 @@ prueba (`mgomez@itu.local`) válido.
 2. Crear la base **`inventario_ubicaciones`** (editando el script de
    `bases-de-datos` antes de ejecutarlo, o renombrando la base
    `ubicacion_db` existente).
-3. Crear el login `inventario_app` con los roles `db_datareader`,
-   `db_datawriter`, `db_ddladmin`.
+3. Crear los logins del proyecto (2 usuarios finales):
+   ```
+   sqlcmd -S localhost -E -i sql-server-iis\scripts\configurar-usuarios-sql.sql
+   ```
+   - `inventario_admin` — `db_owner` (acceso total, lo usa el backend)
+   - `inventario_ro` — `db_datareader` (solo lectura, para demos)
+   El Secret de Kubernetes debe tener `SQLSERVER_USER=inventario_admin`.
+   Si venías usando `inventarioapp` (script anterior), ese script lo
+   elimina automáticamente.
 4. Ejecutar `sql-server-iis/scripts/configurar-firewall-sql-iis.ps1`
    (lee `IP_RED_PROF`/`MINIKUBE_IP` de `infra/red.local.env`, ver
    Fase 0 y la cabecera del script).
@@ -105,8 +112,9 @@ prueba (`mgomez@itu.local`) válido.
    ```
    Ajustar el valor `1536` si la VM tiene más/menos de 2048 MB.
 
-✅ Checklist: `sqlcmd` remoto funciona con `inventario_app`, base
+✅ Checklist: `sqlcmd` remoto funciona con `inventario_admin`, base
 `inventario_ubicaciones` con las 5 tablas y datos de prueba cargados.
+`inventario_ro` puede hacer SELECT pero no INSERT/UPDATE.
 
 ---
 

@@ -75,21 +75,21 @@ foreach ($g in $Grupos) {
     }
 }
 
-# ----- 3. Usuarios de prueba -----
-# Contraseñas segun la tabla de RESUMEN-PROYECTO-EGI.md. Cumplen la
-# politica de complejidad por defecto de AD (mayuscula+minuscula+
-# numero+simbolo, 8+ caracteres) y NO contienen el sAMAccountName
-# (AD rechaza passwords con 3+ caracteres consecutivos del nombre de
-# cuenta, ej. "Pfsense!2025" para "pfsense_bind" falla). Cambiarlas
-# despues de la defensa.
+# ----- 3. Usuarios del proyecto -----
+# Solo se crean los 4 necesarios:
+#   svc-inventario  cuenta de servicio para el bind LDAP del backend
+#   pfsense_bind    cuenta de bind para la autenticacion de pfSense
+#   mgomez          UNICO usuario con TODOS los permisos (grupo Tecnicos)
+#   jperez          UNICO usuario de SOLO LECTURA        (grupo Docentes)
+#
+# Contraseñas: cumplen politica de complejidad de AD (mayuscula+minuscula+
+# numero+simbolo, 8+ caracteres). Cambiarlas despues de la defensa.
+# Nota: AD rechaza passwords que contengan 3+ caracteres del sAMAccountName.
 $Usuarios = @(
     @{ Sam = "svc-inventario"; Nombre = "Service Account Inventario"; Pass = "Inventario!2025"; Grupos = @("InventarioAdmins") }
-    @{ Sam = "pfsense_bind";   Nombre = "pfSense Bind Account";        Pass = "LdapAuth!2025";   Grupos = @() }
-    @{ Sam = "jperez";         Nombre = "Juan Perez";                  Pass = "Inventario!2025"; Grupos = @("Docentes", "InventarioUsers") }
-    @{ Sam = "mgomez";         Nombre = "Maria Gomez";                 Pass = "Inventario!2025"; Grupos = @("Tecnicos", "InventarioAdmins", "InventarioUsers", "pfAdmins") }
-    @{ Sam = "clopez";         Nombre = "Carlos Lopez";                Pass = "Inventario!2025"; Grupos = @("Tecnicos", "InventarioAdmins", "InventarioUsers") }
-    @{ Sam = "agarcia";        Nombre = "Ana Garcia";                  Pass = "Inventario!2025"; Grupos = @("Docentes", "InventarioUsers") }
-    @{ Sam = "psanchez";       Nombre = "Pedro Sanchez";               Pass = "Inventario!2025"; Grupos = @("Alumnos", "InventarioUsers") }
+    @{ Sam = "pfsense_bind";   Nombre = "pfSense Bind Account";       Pass = "LdapAuth!2025";  Grupos = @() }
+    @{ Sam = "mgomez";         Nombre = "Maria Gomez";                Pass = "Inventario!2025"; Grupos = @("Tecnicos", "InventarioAdmins", "InventarioUsers", "pfAdmins") }
+    @{ Sam = "jperez";         Nombre = "Juan Perez";                 Pass = "Inventario!2025"; Grupos = @("Docentes", "InventarioUsers") }
 )
 
 foreach ($u in $Usuarios) {
@@ -118,7 +118,12 @@ foreach ($u in $Usuarios) {
 }
 
 Write-Host ""
-Write-Host "Listo. Estructura OU=ITU, grupos y usuarios de prueba creados/verificados."
-Write-Host "Recordar: el usuario 'svc-inventario' / 'Inventario!2025' es el bind de"
-Write-Host "servicio que necesita el backend para obtener_rol() (ver README.md, seccion"
-Write-Host "'Accion requerida en el backend')."
+Write-Host "Listo. Estructura OU=ITU, grupos y 4 usuarios creados/verificados:"
+Write-Host "  mgomez      -> Tecnicos (acceso total en la app)"
+Write-Host "  jperez      -> Docentes (solo lectura en la app)"
+Write-Host "  svc-inventario -> bind LDAP del backend (ver README.md, seccion 4)"
+Write-Host "  pfsense_bind   -> bind de autenticacion de pfSense"
+Write-Host ""
+Write-Host "Para eliminar cuentas extra que puedan existir en la VM, ejecutar:"
+Write-Host "  .\05-limpiar-ad.ps1 -WhatIf   (ver que se eliminaria)"
+Write-Host "  .\05-limpiar-ad.ps1            (eliminar con confirmacion)"

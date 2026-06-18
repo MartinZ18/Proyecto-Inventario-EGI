@@ -1,19 +1,18 @@
 -- =====================================================================
---  crear-login-inventario-app.sql
+--  crear-login-inventario-app.sql  [REEMPLAZADO]
 --
---  Crea el login SQL "inventarioapp" (autenticacion SQL, no Windows)
---  que usa el backend para conectarse a inventario_ubicaciones, con
---  permisos db_datareader + db_datawriter + db_ddladmin (ver
---  sql-server-iis/README.md, seccion 3 - db_ddladmin es necesario
---  porque app/main.py llama a Base.metadata.create_all() al arrancar).
+--  ESTE SCRIPT QUEDO OBSOLETO. Usar en su lugar:
+--    configurar-usuarios-sql.sql
 --
---  Idempotente: se puede volver a correr sin error si el login/usuario
---  ya existen o ya tienen los roles asignados.
+--  Ese script elimina el login "inventarioapp" y crea los 2 logins
+--  definitivos del proyecto:
+--    inventario_admin  (db_owner — backend + acceso total)
+--    inventario_ro     (db_datareader — solo lectura)
 --
---  Contrasena de laboratorio (misma convencion que los usuarios de AD
---  documentados en active-directory/README.md): InventarioApp!2025
---  Cambiarla despues de la defensa si esta VM se reutiliza.
+--  Se conserva este archivo solo como referencia de la configuracion
+--  original. No ejecutar en VMs ya migradas.
 -- =====================================================================
+-- [ARCHIVO OBSOLETO — ver configurar-usuarios-sql.sql]
 
 USE master;
 GO

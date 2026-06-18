@@ -98,8 +98,8 @@ o de `apuntes.txt`):
 |---|---|
 | `REPO_ACCESS_TOKEN` | PAT con permiso `repo` para clonar el backend y el frontend |
 | `JWT_SECRET` | Clave secreta para firmar los JWT (mínimo 32 bytes aleatorios) |
-| `SQLSERVER_USER` | Usuario de SQL Server (`inventario_app`) |
-| `SQLSERVER_PASSWORD` | Password del usuario SQL |
+| `SQLSERVER_USER` | Usuario de SQL Server: `inventario_admin` (no `inventarioapp` — ver `configurar-usuarios-sql.sql`) |
+| `SQLSERVER_PASSWORD` | Password de `inventario_admin`: `InvAdmin!2025` (cambiar después de la defensa) |
 | `MONGO_ROOT_USER` | Usuario root de MongoDB |
 | `MONGO_ROOT_PASSWORD` | Password root de MongoDB |
 | `LDAP_BIND_PASSWORD` | Password del usuario de servicio LDAP (`svc-inventario`) — **nuevo**, no estaba en el fork original |
