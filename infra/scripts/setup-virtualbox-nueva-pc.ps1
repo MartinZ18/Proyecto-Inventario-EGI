@@ -82,7 +82,26 @@ foreach ($vm in $vms) {
     Write-Host "[OK] $($vm.Nombre) importada y configurada" -ForegroundColor Green
 }
 
-# ---- 3. Resumen -----------------------------------------------
+# ---- 3. Limitar RAM de las VMs --------------------------------
+# Se aplica tanto a VMs recién importadas como a las ya existentes.
+# Ejecutar con las VMs apagadas; de lo contrario VBoxManage retorna error.
+Write-Host "`n=== Ajustando RAM de las VMs ===" -ForegroundColor Cyan
+$ramConfig = @(
+    @{ Nombre = "pfSense-Gateway"; MemMB = 512  },
+    @{ Nombre = "DC01-ITU";        MemMB = 1024 },
+    @{ Nombre = "SQLServer2022";   MemMB = 2048 }
+)
+foreach ($cfg in $ramConfig) {
+    $existe = & $vbm list vms | Select-String $cfg.Nombre
+    if ($existe) {
+        & $vbm modifyvm $cfg.Nombre --memory $cfg.MemMB
+        Write-Host "[OK] $($cfg.Nombre): $($cfg.MemMB) MB" -ForegroundColor Green
+    } else {
+        Write-Host "[SKIP] $($cfg.Nombre) no encontrada" -ForegroundColor Yellow
+    }
+}
+
+# ---- 4. Resumen -----------------------------------------------
 Write-Host "`n=== VMs configuradas ===" -ForegroundColor Cyan
 & $vbm list vms
 

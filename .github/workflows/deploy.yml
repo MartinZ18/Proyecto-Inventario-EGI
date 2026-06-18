@@ -138,10 +138,17 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       # 11) Deployments y Services de backend, frontend y mongo.
+      #     El rollout restart fuerza la recreación de todos los pods aunque
+      #     el spec del Deployment no cambie — necesario porque las imágenes
+      #     siempre se buildean con el tag :latest (mismo nombre, contenido
+      #     nuevo) y kubectl apply no detecta ese cambio como motivo de rollout.
       - name: Aplicar deployments y services
         run: |
           kubectl apply -f infraestructura/kubernetes/deployments/
           kubectl apply -f infraestructura/kubernetes/services/
+          kubectl rollout restart deployment/backend  -n inventario
+          kubectl rollout restart deployment/frontend -n inventario
+          kubectl rollout restart deployment/mongo    -n inventario
 
       # 12) NetworkPolicies zero-trust (deben aplicarse después de que
       #     existan los pods/labels que referencian). Se aplican desde
@@ -160,7 +167,15 @@ jobs:
           kubectl rollout status deployment/frontend -n inventario --timeout=180s
           kubectl rollout status deployment/mongo -n inventario --timeout=180s
 
-      # 14) Resumen final: URL de acceso LAN (NodePort) y estado de los
+      # 14) Seed de MongoDB: carga los documentos iniciales de componentes
+      #     si la colección está vacía. Idempotente: si ya existen datos
+      #     (deploy posterior al primero, o seed manual previo) sale sin
+      #     tocar nada. Lee las credenciales del Secret de Kubernetes, no
+      #     hace falta hardcodear nada aquí.
+      - name: Seed MongoDB (idempotente)
+        run: bash infraestructura/infra/scripts/seed-mongo.sh --backend-repo=./backend
+
+      # 15) Resumen final: URL de acceso LAN (NodePort) y estado de los
       #     pods, útil para la demo. El acceso externo (fuera de la red
       #     del laboratorio) se resuelve aparte, vía el NAT port-forward
       #     de pfSense + el port-forward VirtualBox en pfSense-Gateway

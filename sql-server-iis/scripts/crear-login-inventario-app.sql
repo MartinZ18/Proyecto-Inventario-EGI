@@ -1,7 +1,7 @@
 -- =====================================================================
 --  crear-login-inventario-app.sql
 --
---  Crea el login SQL "inventario_app" (autenticacion SQL, no Windows)
+--  Crea el login SQL "inventarioapp" (autenticacion SQL, no Windows)
 --  que usa el backend para conectarse a inventario_ubicaciones, con
 --  permisos db_datareader + db_datawriter + db_ddladmin (ver
 --  sql-server-iis/README.md, seccion 3 - db_ddladmin es necesario
@@ -17,24 +17,24 @@
 
 USE master;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'inventario_app')
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'inventarioapp')
 BEGIN
-    CREATE LOGIN inventario_app WITH PASSWORD = 'InventarioApp!2025', CHECK_POLICY = ON;
+    CREATE LOGIN inventarioapp WITH PASSWORD = 'InventarioApp!2025', CHECK_POLICY = ON;
 END
 GO
 
 USE inventario_ubicaciones;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'inventario_app')
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'inventarioapp')
 BEGIN
-    CREATE USER inventario_app FOR LOGIN inventario_app;
+    CREATE USER inventarioapp FOR LOGIN inventarioapp;
 END
 GO
 
-IF (IS_ROLEMEMBER('db_datareader', 'inventario_app') = 0)
-    ALTER ROLE db_datareader ADD MEMBER inventario_app;
-IF (IS_ROLEMEMBER('db_datawriter', 'inventario_app') = 0)
-    ALTER ROLE db_datawriter ADD MEMBER inventario_app;
-IF (IS_ROLEMEMBER('db_ddladmin', 'inventario_app') = 0)
-    ALTER ROLE db_ddladmin ADD MEMBER inventario_app;
+IF (IS_ROLEMEMBER('db_datareader', 'inventarioapp') = 0)
+    ALTER ROLE db_datareader ADD MEMBER inventarioapp;
+IF (IS_ROLEMEMBER('db_datawriter', 'inventarioapp') = 0)
+    ALTER ROLE db_datawriter ADD MEMBER inventarioapp;
+IF (IS_ROLEMEMBER('db_ddladmin', 'inventarioapp') = 0)
+    ALTER ROLE db_ddladmin ADD MEMBER inventarioapp;
 GO

@@ -124,8 +124,7 @@ pero ejecutadas con `php -f` (ver "Habilitar SSH" arriba):
 | `auth-server-ad.php` | Authentication Server LDAP `AD-ITU-Laboratorio` (`${DC_IP}:389`) + grupo remoto `pfAdmins` | Sección 3 |
 | `dhcp-relay.php` | Desactiva el DHCP local de LAN y configura DHCP Relay hacia `${DC_IP}` | Sección 4 |
 
-Uso, desde la PC Windows (donde se ejecuta Claude Code y tiene acceso a
-la red Host-Only):
+Uso, desde la PC Windows (que tiene acceso a la red Host-Only):
 
 ```powershell
 .\pfsense\scripts\aplicar-config-pfsense.ps1 -Script wan-allow-private

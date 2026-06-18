@@ -317,58 +317,9 @@ Durante la defensa cerrar todo lo que no sea VirtualBox y el browser.
 
 ---
 
-## Paso 10 — Claude Code en la nueva PC (opcional)
+## Paso 10 — SSH key para LinuxEGI en la nueva PC
 
-Tener Claude Code disponible en la PC de la facultad permite seguir
-trabajando con asistencia de IA y ejecutar comandos directamente.
-
-### Opción A — Claude Code en LinuxEGI (recomendada)
-
-Ventaja: acceso directo a `kubectl`, `docker`, `minikube` sin SSH.
-Sin problemas de quoting entre PowerShell y bash.
-
-```bash
-# En LinuxEGI (SSH o terminal directa)
-
-# Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Claude Code
-npm install -g @anthropic-ai/claude-code
-
-# Clonar el repo de infra si no está ya
-cd ~/inventario/infraestructura   # o git clone ...
-
-# Lanzar
-claude
-```
-
-Al ejecutar `claude` por primera vez pide autenticar con la cuenta
-de Anthropic/Claude (login por browser o API key).
-
-Desde LinuxEGI, Claude Code puede:
-- Leer/editar archivos del repo de infra directamente
-- Ejecutar `kubectl`, `minikube`, `docker` sin SSH hop
-- Correr el seed de Mongo, verificar pods, etc.
-
-### Opción B — Claude Code en la PC de la facultad (Windows)
-
-Si preferís trabajar desde la PC con Windows:
-
-```powershell
-# Instalar Node.js desde nodejs.org, luego:
-npm install -g @anthropic-ai/claude-code
-
-# Lanzar en el directorio del repo de infra
-cd "C:\...\Proyecto-Inventario-EGI-infraestructura"
-claude
-```
-
-Claude Code en Windows usa PowerShell + SSH para llegar a LinuxEGI
-(mismo flujo que el setup actual en la PC de escritorio).
-
-### Configurar SSH key para LinuxEGI en la nueva PC
+Para conectarse a LinuxEGI desde la nueva PC sin contraseña:
 
 ```powershell
 # PowerShell en la PC de la facultad (Windows)

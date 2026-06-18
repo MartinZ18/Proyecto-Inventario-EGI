@@ -23,7 +23,7 @@ antes de pasar a la siguiente fase.
 | 3 — pfSense | ✅ Completa |
 | 4 — Minikube + Calico | ✅ Completa |
 | 5 — Kubernetes (apps + NetworkPolicies) | ✅ Completa |
-| 6 — GitHub Actions (CI/CD) | 🔄 En progreso (runner registrado y corriendo en LinuxEGI; falta cargar GitHub Secrets y disparar el workflow) |
+| 6 — GitHub Actions (CI/CD) | ✅ Completa |
 
 📄 Detalle de lo hecho en cada fase, decisiones tomadas (p. ej. IIS/SSRS
 descartado en Fase 2) y pendientes abiertos para retomar: ver
@@ -96,6 +96,13 @@ prueba (`mgomez@itu.local`) válido.
    Evaluado y descartado (2026-06-14): la app se sirve desde Minikube,
    no desde esta VM, y los reportes SSRS no son necesarios para la
    defensa. Detalle del porqué en `sql-server-iis/README.md` sección 5.
+
+5. Limitar la RAM que SQL Server puede consumir (por defecto usa todo):
+   ```sql
+   -- Correr como sysadmin en la instancia
+   sqlcmd -S localhost -E -i sql-server-iis\scripts\configurar-memoria-sqlserver.sql
+   ```
+   Ajustar el valor `1536` si la VM tiene más/menos de 2048 MB.
 
 ✅ Checklist: `sqlcmd` remoto funciona con `inventario_app`, base
 `inventario_ubicaciones` con las 5 tablas y datos de prueba cargados.
@@ -180,7 +187,7 @@ sudo dpkg -i minikube_latest_amd64.deb
 # la IP de este host (${MINIKUBE_IP} = 192.168.56.30, ver Fase 0):
 # `minikube ip` por sí solo devuelve la IP interna del bridge de
 # Docker, no ruteable desde el resto de la red ni desde pfSense.
-minikube start --cni=calico --driver=docker --ports=30080:30080/tcp
+minikube start --cni=calico --driver=docker --ports=30080:30080/tcp --memory=2048 --cpus=2
 
 # Verificar
 kubectl get nodes
@@ -249,11 +256,19 @@ curl http://${MINIKUBE_IP}:30080/
 #    .\pfsense\scripts\aplicar-config-pfsense.ps1 -Script nat-port-forward
 ```
 
-⚠️ Recordar el seed de MongoDB: usar
-`Proyecto-Inventario-EGI-backend/scripts-dev/componentes_prueba.js`
-(ya alineado con `inventario_componentes`/`computadoras`), NO el de
-`bases-de-datos` (`inventario_db.componentes`). Ver la nota en
-`kubernetes/deployments/mongo-deployment.yaml`.
+⚠️ Seed de MongoDB: el workflow (Fase 6) lo ejecuta automáticamente
+en cada corrida (idempotente). Para hacerlo a mano después de un deploy
+manual o un reset de Mongo:
+
+```bash
+bash infra/scripts/seed-mongo.sh --backend-repo <ruta-checkout-backend>
+```
+
+El script lee credenciales del Secret de Kubernetes, verifica si ya hay
+datos (y no toca nada si los hay), y carga los documentos de
+`scripts-dev/componentes_prueba.js` del repo del backend. Usar SIEMPRE
+ese archivo; NO el de `bases-de-datos` (`inventario_db.componentes`),
+que usa la base/colección incorrecta.
 
 ✅ Checklist: los 3 Deployments en `Running` (1/1), `curl` al frontend
 responde `200`, login desde el navegador funciona, `/inventario/`

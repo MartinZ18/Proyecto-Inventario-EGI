@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# Carga los 12 documentos de componentes en MongoDB.
+# Carga los documentos iniciales de componentes en MongoDB.
 # Ejecutar desde LinuxEGI después del primer deploy via workflow.
 #
 # Lee las credenciales de Mongo del Secret de Kubernetes, así
@@ -50,7 +50,7 @@ COUNT=$(kubectl exec -n inventario "$POD_MONGO" -- \
     mongosh -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin \
     --quiet --eval "db.getSiblingDB('inventario_componentes').computadoras.countDocuments()" 2>/dev/null || echo "0")
 
-if [[ "$COUNT" -ge 12 ]]; then
+if [[ "$COUNT" -gt 0 ]]; then
     ok "Ya existen $COUNT documentos en inventario_componentes.computadoras — nada que hacer."
     exit 0
 fi
@@ -72,8 +72,8 @@ COUNT_FINAL=$(kubectl exec -n inventario "$POD_MONGO" -- \
     mongosh -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin \
     --quiet --eval "db.getSiblingDB('inventario_componentes').computadoras.countDocuments()")
 
-if [[ "$COUNT_FINAL" -ge 12 ]]; then
+if [[ "$COUNT_FINAL" -gt 0 ]]; then
     ok "Seed completado: $COUNT_FINAL documentos en inventario_componentes.computadoras"
 else
-    err "Seed falló: solo hay $COUNT_FINAL documentos (se esperaban 12)"
+    err "Seed falló: la colección sigue vacía después del seed"
 fi

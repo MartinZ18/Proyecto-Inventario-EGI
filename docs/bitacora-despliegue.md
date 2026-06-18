@@ -561,29 +561,142 @@ credenciales embebidas (SSH key o credential helper) antes de la defensa.
 
 ---
 
+## Fase 6 — GitHub Actions (CI/CD) ✅ (2026-06-18)
+
+### VMs correctas para este entorno
+
+Al levantar las VMs hay que usar las que terminan en `B1` / ` 1` (las
+importadas en esta PC). Las equivalencias respecto al entorno original:
+
+| VM en entorno original | VM en esta PC |
+|---|---|
+| `pfSense-Gateway` | `pfSense-Gateway-B1` |
+| `Window Server AD-DC- Comision B` | `Window Server AD-DC- Comision B 1` |
+| `Window Server SQL - IIS - Comision B` | `Window Server SQL - IIS - Comision B 1` |
+| `LinuxEGI` | `LubuntuEGI` |
+
+### Bugs corregidos durante la primera corrida del workflow
+
+El workflow corrió por primera vez el 2026-06-18 con el runner
+`lubuntuegi-minikube` (systemd service en LubuntuEGI). Se encontraron
+y corrigieron 4 bugs:
+
+#### Bug 1 — `SQLSERVER_USER` sin guion bajo en GitHub Secret
+
+El Secret tenía `inventarioapp` (sin `_`). El login de SQL Server se
+llama `inventario_app`. Error resultante: SQL Server error 18456 ("Login
+failed"). Fix permanente: el usuario corrigió el GitHub Secret a
+`inventario_app`.
+
+#### Bug 2 — `LDAP_BIND_PASSWORD` sin signo `!` en GitHub Secret
+
+El Secret tenía `Inventario2025` en vez de `Inventario!2025`. Error
+resultante: `invalidCredentials` al intentar bind con
+`svc-inventario@itu.local`. Fix permanente: el usuario corrigió el
+GitHub Secret a `Inventario!2025`.
+
+#### Bug 3 — `ldap_service.py` — admin bind hardcodeado + filtro de grupo incorrecto
+
+`obtener_rol()` tenía dos problemas:
+
+- Admin bind a `cn=admin,OU=ITU,DC=itu,DC=local` con password `"admin"`
+  → esa cuenta no existe en AD.
+- Búsqueda de grupos con `(member={user_dn})` donde `user_dn` es el
+  UPN (`mgomez@itu.local`) → el atributo `member` de AD guarda DNs, no
+  UPNs, por lo que siempre devolvía 0 grupos → todos los logins
+  retornaban 401 con `rol=None`.
+
+Fix correcto (aplicar en `Agus-tina/Proyecto-Inventario-EGI`, rama `backend`):
+
+```python
+# app/core/config.py — agregar en clase Settings, antes de ldap_user_dn_template:
+ldap_bind_dn: str
+ldap_bind_password: str
+
+# app/services/ldap_service.py — reemplazar el bloque admin_conn + búsqueda de grupos:
+admin_conn = Connection(server, user=settings.ldap_bind_dn,
+                        password=settings.ldap_bind_password, auto_bind=True)
+admin_conn.search(
+    search_base=settings.ldap_base_dn,
+    search_filter=f"(userPrincipalName={user_dn})",
+    search_scope=SUBTREE,
+    attributes=["memberOf"],
+)
+rol = None
+if admin_conn.entries:
+    grupos_usuario = admin_conn.entries[0].entry_attributes_as_dict.get("memberOf", [])
+    for grupo in ("Tecnicos", "Docentes", "Alumnos"):
+        prefijo = f"cn={grupo},".lower()
+        if any(dn.lower().startswith(prefijo) for dn in grupos_usuario):
+            rol = grupo
+            break
+```
+
+⚠️ **Este fix se aplicó únicamente a la imagen local de Minikube**
+(parcheando el fuente en el workspace del runner y reconstruyendo
+`inventario-api:latest`). La próxima corrida del workflow hará checkout
+del repo y construirá la imagen con el código bugueado nuevamente.
+
+**Pendiente crítico**: commit de los dos archivos al repo del backend
+(`Agus-tina/Proyecto-Inventario-EGI`, rama `backend`), luego
+re-disparar el workflow.
+
+#### Bug 4 — MongoDB hostPath con datos viejos de deploy anterior
+
+Después de borrar y recrear el PVC `mongo-data`, MongoDB seguía
+encontrando datos porque el hostPath provisioner de Minikube guarda en
+`/tmp/hostpath-provisioner/inventario/mongo-data` **dentro del
+container Docker de Minikube** — ese directorio sobrevive al borrado
+del PVC.
+
+MongoDB solo ejecuta `MONGO_INITDB_ROOT_USERNAME/PASSWORD` en el primer
+boot con `/data/db` vacío. Con datos viejos presentes, arrancaba con
+las credenciales viejas (sin el usuario `inventario_app`), causando
+`UserNotFound` en cada llamada del backend.
+
+Fix:
+```bash
+kubectl scale deployment mongo -n inventario --replicas=0
+minikube ssh 'sudo rm -rf /tmp/hostpath-provisioner/inventario/mongo-data'
+kubectl scale deployment mongo -n inventario --replicas=1
+```
+
+### Seed de MongoDB
+
+El workflow NO seeda MongoDB por defecto en las corridas anteriores.
+A partir de esta sesión el workflow incluye un paso 14 (`Seed MongoDB`)
+que ejecuta `infra/scripts/seed-mongo.sh` de forma idempotente: si la
+colección ya tiene datos, no hace nada; si está vacía (primer deploy o
+reset), carga `scripts-dev/componentes_prueba.js` del repo del backend.
+
+Para seed manual (deploy manual o post-reset):
+```bash
+bash infra/scripts/seed-mongo.sh --backend-repo <ruta-checkout-backend>
+```
+
+### ✅ Verificación final (2026-06-18)
+
+- `kubectl get pods -n inventario`: los 3 pods `Running 1/1`.
+- Login `POST /auth/login` con `mgomez@itu.local` / `Inventario!2025`
+  → `200 OK`, JWT con `"rol":"Tecnicos"`.
+- `GET /inventario/` con ese JWT → `200 OK`, 12 equipos con
+  `componentes` de Mongo no nulo.
+- Frontend accesible en `http://192.168.56.30:30080/` desde la PC
+  Windows; login y listado de inventario funcionales.
+
+---
+
 ## Cómo seguir
 
-**Fases 0-4 cerradas del todo**, incluidos los extras post-Fase 3 (RDP a
-las VMs del lab en `40100`/`40200` e IIS "almacenes" en `40080`, ambos
-verificados de punta a punta el 2026-06-15) y el endurecimiento iptables
-de Fase 4.
+**Fases 0-6 completas** al 2026-06-18.
 
-**Fase 5 — Kubernetes (apps + NetworkPolicies) ✅ cerrada (2026-06-15)**
-(`docs/runbook-despliegue.md`, sección "Fase 5"): frontend, backend y
-mongo están desplegados y `Running`; login end-to-end contra AD
-verificado (`mgomez` -> JWT con rol `Tecnicos`); migración de datos de
-SQL Server y de MongoDB aplicadas y verificadas (`/inventario/` devuelve
-los 12 equipos completos, cada uno con su `componentes` de Mongo, ver
-arriba); las 7 NetworkPolicies están aplicadas y verificadas contra el
-repo (ver arriba).
-
-**Fase 6 — GitHub Actions (CI/CD) 🔄 en progreso (2026-06-15)**: ver
-sección de arriba. Preparación del lado de LinuxEGI lista (runner
-descargado, prerrequisitos OK, `red.local.env`/`red.example.env` ya
-coinciden con las IPs reales); falta registrar el runner y cargar los
-GitHub Secrets desde la UI web (requiere al usuario), y disparar el
-workflow.
+**Pendiente crítico (bloquea los deploys futuros via workflow)**:
+commit de `app/services/ldap_service.py` y `app/core/config.py` al
+repo `Agus-tina/Proyecto-Inventario-EGI` rama `backend` con el fix del
+LDAP (ver Fase 6 arriba). Hasta que se haga ese commit, cada corrida
+del workflow construirá una imagen con el código bugueado de LDAP, y
+los logins retornarán 401.
 
 Cada fase tiene su propio detalle paso a paso y checklist en
-`docs/runbook-despliegue.md`; esta bitácora se va a ir completando con
-una entrada nueva por fase a medida que se avance.
+`docs/runbook-despliegue.md`; esta bitácora registra lo que realmente
+ocurrió, las decisiones tomadas y los bugs encontrados.

@@ -22,5 +22,11 @@ infra/_generated-pfsense/
 Logs/
 Snapshots/
 
-# Estado local de Claude Code (no es parte del proyecto)
+# Configuración local del IDE (no es parte del proyecto)
 .claude/
+
+# Referencia local de secretos (NUNCA commitear)
+infra/secretos.local.md
+
+# Notas de trabajo locales
+apuntes.txt

@@ -4,19 +4,14 @@
 #   - Docker Engine
 #   - kubectl
 #   - minikube con Calico CNI
-#   - Claude Code (opcional, --with-claude)
 #
 # Prerequisito: Ubuntu 22.04 LTS con IP 192.168.56.30 ya
 # configurada en netplan y SSH operativo.
 #
 # Uso (desde la PC de destino, SSH a LinuxEGI o directo):
 #   bash setup-linuxegi-nueva-pc.sh
-#   bash setup-linuxegi-nueva-pc.sh --with-claude
 # ============================================================
 set -euo pipefail
-
-WITH_CLAUDE=false
-for arg in "$@"; do [[ "$arg" == "--with-claude" ]] && WITH_CLAUDE=true; done
 
 log() { echo -e "\n\033[1;36m=== $* ===\033[0m"; }
 ok()  { echo -e "\033[1;32m[OK]\033[0m $*"; }
@@ -62,7 +57,7 @@ ok "minikube $(minikube version --short)"
 log "Iniciando Minikube con Calico CNI"
 # Necesitamos newgrp docker o sg docker para usar docker sin relogin.
 # Si el usuario ya está en el grupo (relogin previo), funciona directo.
-sg docker -c "minikube start --cni=calico --driver=docker --ports=30080:30080/tcp"
+sg docker -c "minikube start --cni=calico --driver=docker --ports=30080:30080/tcp --memory=2048 --cpus=2"
 sg docker -c "kubectl get nodes"
 sg docker -c "kubectl get pods -n kube-system | grep calico" || true
 ok "Minikube levantado"
@@ -70,18 +65,6 @@ ok "Minikube levantado"
 # ---- envsubst (requerido por generar-manifiestos.sh) --------
 sudo apt-get install -y gettext-base
 ok "envsubst disponible"
-
-# ---- Claude Code (opcional) ---------------------------------
-if [[ "$WITH_CLAUDE" == "true" ]]; then
-    log "Instalando Node.js 20 y Claude Code"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-    npm install -g @anthropic-ai/claude-code
-    ok "Claude Code $(claude --version 2>/dev/null || echo 'instalado')"
-    echo ""
-    echo "  Para usar Claude Code: cd ~/inventario/infraestructura && claude"
-    echo "  Primera vez: te va a pedir autenticar con tu cuenta de Anthropic."
-fi
 
 # ---- Resumen ------------------------------------------------
 echo ""
