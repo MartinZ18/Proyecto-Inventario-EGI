@@ -25,10 +25,6 @@
 # Secrets de GitHub necesarios (Settings -> Secrets and variables ->
 # Actions), usados para crear/actualizar el Secret "backend-secret"
 # sin commitear contraseñas (ver kubernetes/secrets/backend-secret.example.yaml):
-#   - REPO_ACCESS_TOKEN : Personal Access Token con permiso "repo" sobre
-#                         Agus-tina/Proyecto-Inventario-EGI (privado), para
-#                         poder hacer checkout de las ramas backend/frontend
-#                         desde este repo de infraestructura.
 #   - JWT_SECRET            -> backend-secret.JWT_SECRET_KEY
 #   - SQLSERVER_USER        -> backend-secret.SQLSERVER_USER
 #   - SQLSERVER_PASSWORD    -> backend-secret.SQLSERVER_PASSWORD
@@ -55,22 +51,20 @@ jobs:
         with:
           path: infraestructura
 
-      # 2) Checkout del código del backend (rama "backend" del repo principal).
+      # 2) Checkout del código del backend (rama "backend" de este mismo repo).
       - name: Checkout backend
         uses: actions/checkout@v4
         with:
-          repository: Agus-tina/Proyecto-Inventario-EGI
+          repository: MartinZ18/Proyecto-Inventario-EGI-infraestructura
           ref: backend
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
           path: backend
 
-      # 3) Checkout del código del frontend (rama "frontend" del repo principal).
+      # 3) Checkout del código del frontend (rama "frontend" de este mismo repo).
       - name: Checkout frontend
         uses: actions/checkout@v4
         with:
-          repository: Agus-tina/Proyecto-Inventario-EGI
+          repository: MartinZ18/Proyecto-Inventario-EGI-infraestructura
           ref: frontend
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
           path: frontend
 
       # 4) Resolver la configuración de red del laboratorio: carga

@@ -1,16 +1,21 @@
-# Proyecto-Inventario-EGI-infraestructura
+# Proyecto Inventario EGI — Repo Principal
 
-Infraestructura, seguridad y CI/CD del **Inventario ITU** (Proyecto
-Integrador EGI). Este repositorio contiene todo lo necesario para
-desplegar y asegurar la aplicación (backend FastAPI, frontend
-HTML/JS, SQL Server 2022 y MongoDB 7) sobre Kubernetes (Minikube),
-junto con la configuración de red (pfSense, iptables) e identidad
-(Active Directory) del laboratorio.
+**Repositorio central del Proyecto Integrador EGI (ITU)** — sistema de inventario
+de equipos de laboratorio. Acá vive todo: infra, seguridad, CI/CD y el código de
+cada capa subido por el equipo.
 
-El código de la aplicación vive en otro repositorio
-(`Agus-tina/Proyecto-Inventario-EGI`, ramas `backend`, `frontend`,
-`bases-de-datos`). Este repo es responsabilidad del rol **Seguridad y
-Redes** del equipo.
+## Ramas por capa
+
+| Rama | Responsable | Contenido |
+|---|---|---|
+| `main` | Martin (Seguridad y Redes) | Infra, Kubernetes, CI/CD, pfSense, AD, iptables |
+| `backend` | (Backend) | FastAPI + Python — código de la API |
+| `frontend` | (Frontend) | HTML/JS/Bootstrap — interfaz web |
+| `bases-de-datos` | (Bases de datos) | Scripts SQL Server + MongoDB |
+
+El pipeline de CI/CD (`.github/workflows/deploy.yml`) toma el código de las ramas
+`backend` y `frontend` de este mismo repo, lo buildea y lo despliega en Minikube
+en la VM **LinuxEGI** de la facultad.
 
 ---
 
