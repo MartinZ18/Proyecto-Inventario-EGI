@@ -17,8 +17,7 @@ from sqlalchemy.orm import Session
 from pymongo.database import Database
 from app.repositories import equipo_repo, computadora_repo
 from app.schemas.computadora import InventarioCompleto, ComputadoraOut
-from app.schemas.inventario import EquipoOut
-from app.schemas.inventario import EquipoCreate, EquipoUpdate
+from app.schemas.inventario import EquipoOut, EquipoCreate, EquipoUpdate
 
 def obtener_inventario_completo(
     sql_db: Session,
@@ -53,6 +52,7 @@ def listar_inventario(sql_db: Session, mongo_db: Database) -> List[InventarioCom
             )
         )
     return resultado
+
 
 # ===== Operaciones de escritura (CRUD coordinado) =====
 

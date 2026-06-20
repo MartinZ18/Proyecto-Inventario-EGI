@@ -14,6 +14,7 @@ id_equipo es el puente con SQL Server.
 
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
+from app.schemas.inventario import EquipoOut
 
 
 # ----- Sub-documentos -----
@@ -128,9 +129,6 @@ class ComputadoraOut(ComputadoraBase):
 
 
 # ----- Vista unificada (SQL + Mongo) -----
-
-from app.schemas.inventario import EquipoOut
-
 
 class InventarioCompleto(BaseModel):
     """

@@ -19,6 +19,7 @@ class UbicacionOut(BaseModel):
     piso: Optional[int] = None
     model_config = {"from_attributes": True}
 
+
 class PersonaOut(BaseModel):
     id_persona: int
     nombre: str
@@ -28,6 +29,7 @@ class PersonaOut(BaseModel):
     rol: str
     model_config = {"from_attributes": True}
 
+
 class AsignacionOut(BaseModel):
     id_asignacion: int
     persona: PersonaOut
@@ -36,6 +38,7 @@ class AsignacionOut(BaseModel):
     fecha_fin: Optional[date] = None
     model_config = {"from_attributes": True}
 
+
 class MantenimientoOut(BaseModel):
     id_mantenimiento: int
     fecha: Optional[date] = None
@@ -43,6 +46,7 @@ class MantenimientoOut(BaseModel):
     descripcion: Optional[str] = None
     tecnico: PersonaOut
     model_config = {"from_attributes": True}
+
 
 class EquipoOut(BaseModel):
     """Datos del equipo más su ubicación (vienen de SQL Server)."""
@@ -54,6 +58,7 @@ class EquipoOut(BaseModel):
     asignaciones: List[AsignacionOut] = []
     mantenimientos: List[MantenimientoOut] = []
     model_config = {"from_attributes": True}
+
 
 # ===== Schemas de entrada (crear / editar equipo) =====
 
@@ -76,6 +81,7 @@ class EquipoUpdate(BaseModel):
     mesa: Optional[str] = None
     estado: Optional[str] = None
     fecha_alta: Optional[date] = None
+
 
 class UbicacionCreate(BaseModel):
     """Datos para crear una ubicación (los 4 laboratorios se cargan una vez)."""

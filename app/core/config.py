@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # ----- App -----
     app_name: str = "Inventario ITU"
     app_env: str = "local"
-    debug: bool = True
+    debug: bool = False
 
     # ----- Seguridad / JWT -----
     jwt_secret_key: str
@@ -59,9 +59,11 @@ class Settings(BaseSettings):
         TrustServerCertificate=yes evita problemas con el cert
         autofirmado de la imagen oficial de SQL Server en contenedor.
         """
+        usuario = quote_plus(self.sqlserver_user)
+        clave = quote_plus(self.sqlserver_password)
         driver = self.sqlserver_driver.replace(" ", "+")
         return (
-            f"mssql+pyodbc://{self.sqlserver_user}:{self.sqlserver_password}"
+            f"mssql+pyodbc://{usuario}:{clave}"
             f"@{self.sqlserver_host}:{self.sqlserver_port}/{self.sqlserver_db}"
             f"?driver={driver}&TrustServerCertificate=yes"
         )
@@ -76,6 +78,7 @@ class Settings(BaseSettings):
             f"@{self.mongo_host}:{self.mongo_port}/"
             f"?authSource=admin&authMechanism=SCRAM-SHA-256"
         )
+
 
 @lru_cache
 def get_settings() -> Settings:
