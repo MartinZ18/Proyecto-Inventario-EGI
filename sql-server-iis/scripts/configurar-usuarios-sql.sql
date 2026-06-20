@@ -27,9 +27,10 @@
 --
 --  Idempotente: cada paso se puede volver a correr sin error.
 --
---  Contrasenas de laboratorio (cambiar despues de la defensa):
---    inventario_admin  InvAdmin!2025
---    inventario_ro     InvReadOnly!2025
+--  Las contraseñas se pasan como variables sqlcmd (nunca hardcodeadas):
+--    sqlcmd -S localhost -E ^
+--           -v ADMIN_PASSWORD="TuPasswordSegura!1" RO_PASSWORD="OtraPassword!2" ^
+--           -i configurar-usuarios-sql.sql
 -- =====================================================================
 
 -- =====================================================================
@@ -44,7 +45,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'inventario_admin')
 BEGIN
     CREATE LOGIN inventario_admin
-        WITH PASSWORD    = 'InvAdmin!2025',
+        WITH PASSWORD    = '$(ADMIN_PASSWORD)',
              CHECK_POLICY = ON;
     PRINT 'Login inventario_admin creado.';
 END
@@ -78,7 +79,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'inventario_ro')
 BEGIN
     CREATE LOGIN inventario_ro
-        WITH PASSWORD    = 'InvReadOnly!2025',
+        WITH PASSWORD    = '$(RO_PASSWORD)',
              CHECK_POLICY = ON;
     PRINT 'Login inventario_ro creado.';
 END
@@ -129,7 +130,7 @@ GO
 --  FIN DEL PASO 1
 --  Hacer el PASO 2 antes de continuar:
 --    1. Actualizar GitHub Secret SQLSERVER_USER = "inventario_admin"
---    2. Actualizar GitHub Secret SQLSERVER_PASSWORD = "InvAdmin!2025"
+--    2. Actualizar GitHub Secret SQLSERVER_PASSWORD con el valor usado en ADMIN_PASSWORD
 --    3. Re-ejecutar el workflow de GitHub Actions
 --    4. Verificar que el login desde el frontend sigue funcionando
 --  Una vez confirmado, ejecutar el PASO 3 a continuacion.
@@ -173,6 +174,6 @@ GO
 -- =====================================================================
 --  FIN
 --  Logins finales esperados en inventario_ubicaciones:
---    inventario_admin  InvAdmin!2025    (db_owner — backend + acceso total)
---    inventario_ro     InvReadOnly!2025 (db_datareader — solo SELECT)
+--    inventario_admin  (db_owner — backend + acceso total)
+--    inventario_ro     (db_datareader — solo SELECT)
 -- =====================================================================

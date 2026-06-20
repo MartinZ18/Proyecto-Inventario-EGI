@@ -12,12 +12,25 @@
 #
 # Uso:
 #   bash verificar-migracion.sh
+#
+# Variables de entorno opcionales (si no se pasan, se usan los defaults de lab):
+#   VERIFY_USER      usuario AD para el test de login (default: mgomez)
+#   VERIFY_PASSWORD  contraseña del usuario          (no tiene default — debe setearse)
+#
+# Ejemplo:
+#   VERIFY_USER=mgomez VERIFY_PASSWORD="MiPassword!1" bash verificar-migracion.sh
 # ============================================================
 set -uo pipefail
 
 MINIKUBE_IP=$(grep MINIKUBE_IP "$(dirname "$0")/../red.local.env" 2>/dev/null \
     | cut -d= -f2 || echo "192.168.56.30")
 BASE_URL="http://${MINIKUBE_IP}:30080"
+
+VERIFY_USER="${VERIFY_USER:-mgomez}"
+if [[ -z "${VERIFY_PASSWORD:-}" ]]; then
+    read -rsp "Contraseña para ${VERIFY_USER}: " VERIFY_PASSWORD
+    echo
+fi
 
 pass=0; fail=0
 ok()   { echo -e "\033[1;32m[OK]\033[0m   $*"; ((pass++)); }
@@ -61,10 +74,10 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$BASE_URL/" || 
 
 # ---- Login --------------------------------------------------
 echo ""
-info "Probando login (mgomez / Inventario!2025)..."
+info "Probando login (${VERIFY_USER})..."
 TOKEN=$(curl -s -X POST "${BASE_URL}/auth/login" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "username=mgomez&password=Inventario!2025" \
+    -d "username=${VERIFY_USER}&password=${VERIFY_PASSWORD}" \
     --max-time 10 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('access_token',''))" 2>/dev/null || echo "")
 
 if [[ -n "$TOKEN" && "$TOKEN" != "null" ]]; then

@@ -12,7 +12,13 @@ Es IDEMPOTENTE: se puede volver a ejecutar sin error si las OUs,
 grupos o usuarios ya existen (los pasos existentes se saltean).
 
 Uso:
+    # Interactivo (solicita contraseñas por consola):
     powershell -ExecutionPolicy Bypass -File .\04-crear-usuarios-grupos.ps1
+
+    # No-interactivo (CI/CD o automatización):
+    powershell -ExecutionPolicy Bypass -File .\04-crear-usuarios-grupos.ps1 `
+        -PassInventario "MiPasswordSegura!1" `
+        -PassLdap "OtraPassword!2"
 
 Ver active-directory/README.md para el detalle de cada usuario/grupo
 y el paso a paso completo de instalacion de AD DS/DNS.
@@ -20,6 +26,18 @@ y el paso a paso completo de instalacion de AD DS/DNS.
 #>
 
 #Requires -Modules ActiveDirectory
+
+param(
+    [string]$PassInventario = "",
+    [string]$PassLdap       = ""
+)
+
+if (-not $PassInventario) {
+    $PassInventario = Read-Host "Contraseña para usuarios de inventario (mgomez, jperez, svc-inventario)"
+}
+if (-not $PassLdap) {
+    $PassLdap = Read-Host "Contraseña para pfsense_bind"
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -82,14 +100,15 @@ foreach ($g in $Grupos) {
 #   mgomez          UNICO usuario con TODOS los permisos (grupo Tecnicos)
 #   jperez          UNICO usuario de SOLO LECTURA        (grupo Docentes)
 #
-# Contraseñas: cumplen politica de complejidad de AD (mayuscula+minuscula+
-# numero+simbolo, 8+ caracteres). Cambiarlas despues de la defensa.
+# Las contraseñas se reciben por parametro (ver bloque param() arriba).
+# Deben cumplir la politica de complejidad de AD: mayuscula+minuscula+
+# numero+simbolo, 8+ caracteres.
 # Nota: AD rechaza passwords que contengan 3+ caracteres del sAMAccountName.
 $Usuarios = @(
-    @{ Sam = "svc-inventario"; Nombre = "Service Account Inventario"; Pass = "Inventario!2025"; Grupos = @("InventarioAdmins") }
-    @{ Sam = "pfsense_bind";   Nombre = "pfSense Bind Account";       Pass = "LdapAuth!2025";  Grupos = @() }
-    @{ Sam = "mgomez";         Nombre = "Maria Gomez";                Pass = "Inventario!2025"; Grupos = @("Tecnicos", "InventarioAdmins", "InventarioUsers", "pfAdmins") }
-    @{ Sam = "jperez";         Nombre = "Juan Perez";                 Pass = "Inventario!2025"; Grupos = @("Docentes", "InventarioUsers") }
+    @{ Sam = "svc-inventario"; Nombre = "Service Account Inventario"; Pass = $PassInventario; Grupos = @("InventarioAdmins") }
+    @{ Sam = "pfsense_bind";   Nombre = "pfSense Bind Account";       Pass = $PassLdap;       Grupos = @() }
+    @{ Sam = "mgomez";         Nombre = "Maria Gomez";                Pass = $PassInventario; Grupos = @("Tecnicos", "InventarioAdmins", "InventarioUsers", "pfAdmins") }
+    @{ Sam = "jperez";         Nombre = "Juan Perez";                 Pass = $PassInventario; Grupos = @("Docentes", "InventarioUsers") }
 )
 
 foreach ($u in $Usuarios) {
