@@ -31,7 +31,7 @@ def search_by_tipo(db: Database, tipo: str) -> List[dict]:
 
 def create(db: Database, data: ComputadoraCreate) -> dict:
     """Inserta un nuevo documento de componentes."""
-    doc = data.model_dump()
+    doc = data.model_dump(exclude_none=True)
     _coll(db).insert_one(doc)
     return doc
 
